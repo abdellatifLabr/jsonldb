@@ -8,6 +8,7 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    environment: pypi
     permissions:
       id-token: write
 
@@ -26,6 +27,4 @@ jobs:
         run: python -m build
 
       - name: Publish to PyPI
-        uses: pypa/publish-pypi-pkg@release/v1
-        with:
-          user: __token__
+        uses: pypa/gh-action-pypi-publish@release/v1
