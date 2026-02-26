@@ -4,6 +4,7 @@ import uuid
 from pathlib import Path
 from typing import Any, Iterator
 
+from .compactor import Compactor
 from .index import Index
 from .record import Record
 from .wal import WAL, WalEntry
@@ -21,6 +22,7 @@ class Database:
         self._index_fields = index_fields or []
 
         self.wal = WAL(self.wal_path)
+        self.compactor = Compactor(self.data_path, self.index, self.wal, self._index_fields)
 
     def insert(self, data: dict[str, Any]) -> str:
         record_id = str(uuid.uuid4())
@@ -140,47 +142,4 @@ class Database:
         return sum(1 for _ in self.all())
 
     def compact(self) -> int:
-        compacted_records = {}
-
-        for record in self._scan_data():
-            compacted_records[record.id] = record
-
-        for entry in self.wal.scan():
-            if entry.op == "delete":
-                compacted_records.pop(entry.record_id, None)
-            elif entry.op in ("insert", "update") and entry.data:
-                compacted_records[entry.record_id] = Record(id=entry.record_id, data=entry.data)
-
-        new_data_path = self.data_path.with_suffix(".jsonl.tmp")
-        seen = {}
-
-        with open(new_data_path, "w") as f:
-            offset = 0
-            for record_id, record in compacted_records.items():
-                line = record.to_jsonl() + "\n"
-                f.write(line)
-                end_offset = f.tell()
-                seen[record_id] = (offset, end_offset)
-                offset = end_offset
-
-        if self.data_path.exists():
-            self.data_path.unlink()
-        new_data_path.rename(self.data_path)
-
-        self.index.clear()
-        for record_id, (offset, end_offset) in seen.items():
-            self.index.put(record_id.encode(), struct.pack("QQ", offset, end_offset))
-
-            with open(self.data_path, "r") as f:
-                f.seek(offset)
-                line = f.read(end_offset - offset).strip()
-                record = Record.from_jsonl(line)
-
-            for field in self._index_fields:
-                if field in record.data:
-                    index_key = f"{field}:{json.dumps(record.data[field])}".encode()
-                    self.index.put_index(index_key, record_id.encode())
-
-        self.wal.clear()
-
-        return len(seen)
+        return self.compactor.compact()
