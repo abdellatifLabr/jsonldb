@@ -68,10 +68,10 @@ class Database:
         for entry in self.wal.scan():
             if entry.record_id == record_id:
                 last_entry = entry
-        
+
         if last_entry is None:
             return None
-        
+
         if last_entry.op == "delete":
             return None
         if last_entry.op in ("insert", "update") and last_entry.data:
@@ -141,7 +141,7 @@ class Database:
 
     def compact(self) -> int:
         compacted_records = {}
-        
+
         for record in self._scan_data():
             compacted_records[record.id] = record
 
