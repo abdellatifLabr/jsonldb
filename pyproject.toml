@@ -1,6 +1,6 @@
 [project]
 name = "jsonldb"
-version = "0.1.0"
+version = "0.1.1"
 description = "A NoSQL database built on JSONL format with LMDB indexing and WAL for durability"
 readme = "README.md"
 requires-python = ">=3.10"
